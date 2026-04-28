@@ -1,74 +1,124 @@
 import turtle
+import time
 
-# Setup screen
+# --- Setup ---
 screen = turtle.Screen()
 screen.bgcolor("pale turquoise")
 screen.title("Pet Adoption Game")
+screen.setup(width=600, height=600)
+screen.tracer(0) # Turns off animation for smoother drawing
 
-t = turtle.Turtle()
-t.hideturtle()
-t.speed(0)
+# Turtles for drawing
+pet_drawer = turtle.Turtle()
+pet_drawer.hideturtle()
+ui_drawer = turtle.Turtle()
+ui_drawer.hideturtle()
 
-# Global variable for hunger
-hunger = 100
+# Game Stats
+stats = {"hunger": 100, "happiness": 100, "age": 0}
 game_active = True
+pet_type = ""
+pet_name = ""
 
-def display_message(message, y_offset=0):
-    t.clear()
-    # Draw a simple "pet" (a circle) so the screen isn't empty
-    t.penup()
-    t.goto(0, -50)
-    t.pendown()
-    t.fillcolor("orange")
-    t.begin_fill()
-    t.circle(40)
-    t.end_fill()
+def draw_pet(mood):
+    """Draws a simple face based on the pet's mood."""
+    pet_drawer.clear()
     
-    # Draw text
-    t.penup()
-    t.goto(0, y_offset + 50)
-    t.write(message, align="center", font=("Arial", 18, "bold"))
+    # Body
+    pet_drawer.penup()
+    pet_drawer.goto(0, -100)
+    pet_drawer.pendown()
+    colors = {"happy": "gold", "sad": "light coral", "hungry": "orange"}
+    pet_drawer.fillcolor(colors.get(mood, "gold"))
+    pet_drawer.begin_fill()
+    pet_drawer.circle(100)
+    pet_drawer.end_fill()
 
-def feed_pet(x, y):
-    global hunger
-    if game_active and hunger < 100:
-        hunger += 1
-        # We don't call update_display here to avoid timer stacking
-        # Just let the next timer tick show the new value
+    # Eyes
+    for x in [-35, 35]:
+        pet_drawer.penup()
+        pet_drawer.goto(x, 20)
+        pet_drawer.pendown()
+        pet_drawer.dot(20, "black")
 
-def update_game():
-    global hunger, game_active
-    
-    if hunger <= 0:
-        display_message(f"Oh no! {name_pet} ran away to find food!")
-        game_active = False
-        return # Stops the loop
-
-    hunger -= 1
-    
-    if hunger > 10:
-        display_message(f"{name_pet}'s Hunger: {hunger}\n(Click to feed!)")
+    # Mouth
+    pet_drawer.penup()
+    pet_drawer.goto(-40, -30)
+    pet_drawer.pendown()
+    pet_drawer.pensize(5)
+    if mood == "happy":
+        pet_drawer.setheading(-60)
+        pet_drawer.circle(45, 120)
     else:
-        display_message(f"{name_pet} is STARVING ({hunger})!\nCLICK TO FEED!")
+        pet_drawer.setheading(60)
+        pet_drawer.circle(-45, -120)
+    pet_drawer.setheading(0) # Reset heading
 
-    # Schedule the NEXT decrease in 1 second
-    screen.ontimer(update_game, 1000) 
-
-# 1. Welcome and Name Input
-name = screen.textinput("Welcome", "Please enter your name:")
-
-if name:
-    name_pet = screen.textinput("Pet Name", "What is your pet's name?")
+def update_ui():
+    """Updates the text on screen."""
+    ui_drawer.clear()
+    ui_drawer.penup()
+    ui_drawer.goto(0, 220)
+    ui_drawer.write(f"{pet_name} the {pet_type}", align="center", font=("Arial", 24, "bold"))
     
-    if name_pet:
-        pet_list = ["Dog", "Cat", "Hamster", "Rabbit"]
-        options = ", ".join(pet_list)
-        pet_choice = screen.textinput("Choose a Pet", f"Options: {options}\n\nPick one:")
+    ui_drawer.goto(-200, 180)
+    ui_drawer.write(f"Hunger: {stats['hunger']}%", align="left", font=("Arial", 14, "normal"))
+    
+    ui_drawer.goto(80, 180)
+    ui_drawer.write(f"Happiness: {stats['happiness']}%", align="left", font=("Arial", 14, "normal"))
+    
+    ui_drawer.goto(0, -250)
+    ui_drawer.write("Press 'F' to Feed | Press 'P' to Play", align="center", font=("Arial(12, 'italic')"))
+    screen.update()
 
-        if pet_choice and pet_choice.capitalize() in pet_list:
-            screen.onclick(feed_pet)
-            update_game() # Start the loop
-        else:
-            display_message("Invalid choice. Restart to play.")
+def feed():
+    if game_active and stats["hunger"] < 100:
+        stats["hunger"] = min(100, stats["hunger"] + 15)
+        update_ui()
+
+def play():
+    if game_active and stats["happiness"] < 100:
+        stats["happiness"] = min(100, stats["happiness"] + 15)
+        stats["hunger"] -= 5 # Playing makes them hungry!
+        update_ui()
+
+def game_loop():
+    global game_active
+    if not game_active:
+        return
+
+    # Decrease stats over time
+    stats["hunger"] -= 2
+    stats["happiness"] -= 1
+    
+    # Determine Mood
+    current_mood = "happy"
+    if stats["hunger"] < 30 or stats["happiness"] < 30:
+        current_mood = "sad"
+    
+    # Check Game Over
+    if stats["hunger"] <= 0:
+        draw_pet("sad")
+        ui_drawer.goto(0, 0)
+        ui_drawer.write("GAME OVER: Your pet ran away!", align="center", font=("Arial", 20, "bold"))
+        game_active = False
+        return
+
+    draw_pet(current_mood)
+    update_ui()
+    screen.ontimer(game_loop, 1000)
+
+# --- Start Game ---
+name = screen.textinput("Welcome", "Your Name:")
+if name:
+    pet_name = screen.textinput("Pet Name", "Name your pet:")
+    pet_type = screen.textinput("Choose Pet", "Dog, Cat, or Hamster?").capitalize()
+
+    # Controls
+    screen.listen()
+    screen.onkey(feed, "f")
+    screen.onkey(play, "p")
+    
+    game_loop()
 
 screen.mainloop()
