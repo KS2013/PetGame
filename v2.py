@@ -1,142 +1,156 @@
-import turtle
+import tkinter as tk
+from tkinter import ttk, messagebox
 
-# --- Setup Screen ---
-screen = turtle.Screen()
-screen.bgcolor("pale turquoise")
-screen.title("Pet Adoption Game")
-screen.setup(width=600, height=600)
-screen.tracer(0) 
+class PetGame:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Premium Pet Adoption")
+        self.root.geometry("500x700")
+        self.root.configure(bg="#f0f4f7")
 
-# --- Global Variables ---
-stats = {"hunger": 100, "happiness": 100}
-game_active = True
-pet_name = ""
-pet_type = ""
+        # Game State
+        self.stats = {"hunger": 100, "happiness": 100, "energy": 100}
+        self.pet_name = ""
+        self.pet_type = ""
+        self.game_active = False
 
-# Setup Turtles
-pet_drawer = turtle.Turtle()
-pet_drawer.hideturtle()
-ui_drawer = turtle.Turtle()
-ui_drawer.hideturtle()
+        self.setup_start_screen()
 
-def draw_pet(mood):
-    pet_drawer.clear()
-    
-    colors = {
-        "Dog": "orange",
-        "Cat": "light gray",
-        "Hamster": "tan",
-        "Rabbit": "white",
-        "Dragon": "forest green"
-    }
-    
-    body_color = colors.get(pet_type, "gold")
-    if mood == "sad":
-        body_color = "light coral"
+    def setup_start_screen(self):
+        self.start_frame = tk.Frame(self.root, bg="#f0f4f7")
+        self.start_frame.pack(expand=True)
 
-    # Draw Body
-    pet_drawer.penup()
-    pet_drawer.goto(0, -100)
-    pet_drawer.pendown()
-    pet_drawer.fillcolor(body_color)
-    pet_drawer.begin_fill()
-    pet_drawer.circle(100)
-    pet_drawer.end_fill()
+        tk.Label(self.start_frame, text="🐾 Pet Adoption Center", font=("Helvetica", 24, "bold"), bg="#f0f4f7").pack(pady=20)
+        
+        tk.Label(self.start_frame, text="Pet Name:", bg="#f0f4f7").pack()
+        self.name_entry = tk.Entry(self.start_frame, font=("Helvetica", 14))
+        self.name_entry.pack(pady=5)
 
-    # ADDED: Ear logic for Cats
-    if pet_type == "Cat":
-        for x in [-70, 30]: # Position ears
-            pet_drawer.penup()
-            pet_drawer.goto(x, 70)
-            pet_drawer.setheading(0)
-            pet_drawer.pendown()
-            pet_drawer.begin_fill()
-            for _ in range(3): # Triangle shape
-                pet_drawer.forward(40)
-                pet_drawer.left(120)
-            pet_drawer.end_fill()
+        tk.Label(self.start_frame, text="Select Species:", bg="#f0f4f7").pack()
+        self.type_var = tk.StringVar(value="Dog")
+        species = ["Dog", "Cat", "Hamster", "Rabbit", "Dragon"]
+        self.type_menu = ttk.Combobox(self.start_frame, textvariable=self.type_var, values=species, state="readonly")
+        self.type_menu.pack(pady=5)
 
-    # Draw Eyes
-    for x in [-35, 35]:
-        pet_drawer.penup()
-        pet_drawer.goto(x, 20)
-        pet_drawer.pendown()
-        pet_drawer.dot(20, "black")
+        tk.Button(self.start_frame, text="Adopt Pet!", command=self.start_game, bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"), padx=20).pack(pady=20)
 
-    # Draw Mouth
-    pet_drawer.penup()
-    pet_drawer.pensize(5)
-    if mood == "happy":
-        pet_drawer.goto(-40, -30)
-        pet_drawer.setheading(-60)
-        pet_drawer.circle(45, 120)
-    else:
-        pet_drawer.goto(-40, -60)
-        pet_drawer.setheading(60)
-        pet_drawer.circle(-45, -120)
-    pet_drawer.setheading(0)
+    def start_game(self):
+        self.pet_name = self.name_entry.get()
+        self.pet_type = self.type_var.get()
+        
+        if not self.pet_name:
+            messagebox.showwarning("Wait!", "Your pet needs a name!")
+            return
 
-def update_ui():
-    ui_drawer.clear()
-    ui_drawer.penup()
-    ui_drawer.goto(0, 220)
-    ui_drawer.write(f"{pet_name} the {pet_type}", align="center", font=("Arial", 24, "bold"))
-    ui_drawer.goto(-220, 180)
-    ui_drawer.write(f"Hunger: {stats['hunger']}%", align="left", font=("Arial", 14, "bold"))
-    ui_drawer.goto(80, 180)
-    ui_drawer.write(f"Happiness: {stats['happiness']}%", align="left", font=("Arial", 14, "bold"))
-    ui_drawer.goto(0, -250)
-    ui_drawer.write("Press [F] to Feed | Press [P] to Play", align="center", font=("Arial", 12, "italic"))
-    ui_drawer.goto(150, -150)
-    ui_drawer.write("KS2013 on GitHub", align="center", font=("Arial", 18, "bold"))
-    screen.update()
+        self.start_frame.destroy()
+        self.game_active = True
+        self.setup_main_ui()
+        self.update_loop()
 
-def feed():
-    if game_active:
-        stats["hunger"] = min(100, stats["hunger"] + 20)
-        update_ui()
+    def setup_main_ui(self):
+        # Header
+        tk.Label(self.root, text=f"{self.pet_name} the {self.pet_type}", font=("Helvetica", 20, "bold"), bg="#f0f4f7").pack(pady=10)
 
-def play():
-    if game_active:
-        stats["happiness"] = min(100, stats["happiness"] + 20)
-        stats["hunger"] -= 5
-        update_ui()
+        # Canvas for Drawing Pet
+        self.canvas = tk.Canvas(self.root, width=400, height=350, bg="white", highlightthickness=2, highlightbackground="#d1d9e0")
+        self.canvas.pack(pady=10)
 
-def game_loop():
-    global game_active
-    if not game_active: return
+        # Stats Container
+        stats_frame = tk.Frame(self.root, bg="#f0f4f7")
+        stats_frame.pack(fill="x", padx=50)
 
-    stats["hunger"] -= 2
-    stats["happiness"] -= 1
-    
-    if stats["hunger"] <= 0:
-        draw_pet("sad")
-        ui_drawer.goto(0, 0)
-        ui_drawer.color("red")
-        ui_drawer.write(f"GAME OVER: {pet_name} ran away!", align="center", font=("Arial", 22, "bold"))
-        game_active = False
-        screen.update()
-        return
+        # Hunger Bar
+        tk.Label(stats_frame, text="Hunger", bg="#f0f4f7").pack(anchor="w")
+        self.hunger_bar = ttk.Progressbar(stats_frame, length=300, mode='determinate')
+        self.hunger_bar.pack(pady=2, fill="x")
 
-    mood = "happy" if stats["hunger"] > 30 and stats["happiness"] > 30 else "sad"
-    draw_pet(mood)
-    update_ui()
-    screen.ontimer(game_loop, 1000)
+        # Happiness Bar
+        tk.Label(stats_frame, text="Happiness", bg="#f0f4f7").pack(anchor="w")
+        self.happiness_bar = ttk.Progressbar(stats_frame, length=300, mode='determinate')
+        self.happiness_bar.pack(pady=2, fill="x")
 
-# --- Start Game ---
-name_user = screen.textinput("Welcome", "What is your name?")
-if name_user:
-    pet_name = screen.textinput("Pet Name", "Name your pet:")
-    options = ["Dog", "Cat", "Hamster", "Rabbit", "Dragon"]
-    pet_choice = screen.textinput("Choose Pet", f"Options: {', '.join(options)}")
-    
-    if pet_choice and pet_choice.capitalize() in options:
-        pet_type = pet_choice.capitalize()
-        screen.listen()
-        screen.onkey(feed, "f")
-        screen.onkey(play, "p")
-        game_loop()
-    else:
-        ui_drawer.write("Invalid choice. Please restart.", align="center", font=("Arial", 18))
+        # Interaction Buttons
+        btn_frame = tk.Frame(self.root, bg="#f0f4f7")
+        btn_frame.pack(pady=20)
 
-screen.mainloop()
+        tk.Button(btn_frame, text="🍎 Feed", width=10, command=self.feed, bg="#ff9f43", fg="white", font=("bold")).grid(row=0, column=0, padx=10)
+        tk.Button(btn_frame, text="🎾 Play", width=10, command=self.play, bg="#54a0ff", fg="white", font=("bold")).grid(row=0, column=1, padx=10)
+        tk.Button(btn_frame, text="💤 Rest", width=10, command=self.rest, bg="#5f27cd", fg="white", font=("bold")).grid(row=0, column=2, padx=10)
+
+    def draw_pet(self):
+        self.canvas.delete("all")
+        cx, cy = 200, 200 # Center
+        
+        colors = {"Dog": "#f39c12", "Cat": "#bdc3c7", "Hamster": "#edbf91", "Rabbit": "#ffffff", "Dragon": "#2ecc71"}
+        color = colors.get(self.pet_type, "gold")
+        
+        # Draw Ears based on type
+        if self.pet_type == "Cat":
+            self.canvas.create_polygon(cx-70, cy-50, cx-40, cy-120, cx-10, cy-70, fill=color, outline="black")
+            self.canvas.create_polygon(cx+70, cy-50, cx+40, cy-120, cx+10, cy-70, fill=color, outline="black")
+        elif self.pet_type == "Rabbit":
+            self.canvas.create_oval(cx-60, cy-180, cx-20, cy-50, fill=color, outline="black")
+            self.canvas.create_oval(cx+20, cy-180, cx+60, cy-50, fill=color, outline="black")
+        elif self.pet_type == "Dragon":
+            self.canvas.create_polygon(cx-80, cy-40, cx-110, cy-110, cx-40, cy-80, fill="#c0392b")
+            self.canvas.create_polygon(cx+80, cy-40, cx+110, cy-110, cx+40, cy-80, fill="#c0392b")
+
+        # Main Body/Head
+        self.canvas.create_oval(cx-90, cy-80, cx+90, cy+100, fill=color, outline="#333", width=2)
+
+        # Eyes
+        eye_color = "black" if self.stats["hunger"] > 20 else "#576574"
+        self.canvas.create_oval(cx-40, cy-10, cx-20, cy+10, fill=eye_color)
+        self.canvas.create_oval(cx+20, cy-10, cx+40, cy+10, fill=eye_color)
+
+        # Mouth (Dynamic Mood)
+        if self.stats["happiness"] > 50:
+            self.canvas.create_arc(cx-40, cy+20, cx+40, cy+60, start=0, extent=-180, style="arc", width=3)
+        else:
+            self.canvas.create_arc(cx-30, cy+50, cx+30, cy+80, start=0, extent=180, style="arc", width=2)
+
+    def update_loop(self):
+        if not self.game_active: return
+
+        # Decay stats
+        self.stats["hunger"] -= 1.5
+        self.stats["happiness"] -= 1.0
+        
+        # Clamp values
+        for key in self.stats:
+            self.stats[key] = max(0, min(100, self.stats[key]))
+
+        # Update Bars
+        self.hunger_bar['value'] = self.stats["hunger"]
+        self.happiness_bar['value'] = self.stats["happiness"]
+
+        self.draw_pet()
+
+        if self.stats["hunger"] <= 0:
+            self.game_active = False
+            messagebox.showinfo("Game Over", f"Oh no! {self.pet_name} got too hungry and went to find snacks elsewhere!")
+            self.root.destroy()
+        else:
+            self.root.after(1000, self.update_loop)
+
+    def feed(self):
+        self.stats["hunger"] += 15
+        self.draw_pet()
+
+    def play(self):
+        if self.stats["hunger"] > 10:
+            self.stats["happiness"] += 20
+            self.stats["hunger"] -= 10
+            self.draw_pet()
+        else:
+            messagebox.showwarning("Too Hungry", f"{self.pet_name} is too hungry to play!")
+
+    def rest(self):
+        self.stats["happiness"] += 5
+        self.stats["hunger"] -= 5
+        self.draw_pet()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    game = PetGame(root)
+    root.mainloop()
